@@ -1,3 +1,5 @@
+from sys import stdout
+
 # Disk configurations
 
 disks = {
@@ -40,23 +42,21 @@ disks = {
 
 # Key components: The disks and their order + the initial state of the disks, or the "keyword"
 
-key = {
-    'disks': ['61', '70', '63'],
-    'keyword': ['r', 'l', 'k']
-}
+def beautify(text):
+    return ' '.join(text[i:i+4] for i in range(0, len(text), 4))
 
-keywordPosOnDisks = [disks[key['disks'][0]].index(key['keyword'][0]),
+def uglify(text):
+    return text.replace(' ', '').lower()
+
+def encrypt(plaintext, key):
+    keywordPosOnDisks = [disks[key['disks'][0]].index(key['keyword'][0]),
                     disks[key['disks'][1]].index(key['keyword'][1]),
                     disks[key['disks'][2]].index(key['keyword'][2])]
-
-def encrypt(plaintext):
     ciphertext = ''
     j = 0
     for i, char in enumerate(plaintext):
         if not char.isalpha():
             continue
-        if j != 0 and j % 4 == 0:
-            ciphertext += ' '
         posOnDisk2 = disks[key['disks'][2]].index(char)
         movement = (posOnDisk2 - keywordPosOnDisks[2]) % 26
         if j % 2 != 0:
@@ -66,8 +66,10 @@ def encrypt(plaintext):
         j += 1
     return ciphertext
 
-def decrypt(ciphertext):
-    ciphertext = ciphertext.replace(' ', '')
+def decrypt(ciphertext, key):
+    keywordPosOnDisks = [disks[key['disks'][0]].index(key['keyword'][0]),
+                    disks[key['disks'][1]].index(key['keyword'][1]),
+                    disks[key['disks'][2]].index(key['keyword'][2])]
     plaintext = ''
     for i in range(0, len(ciphertext), 2):
         posOnDisk0 = disks[key['disks'][0]].index(ciphertext[i])
@@ -78,6 +80,80 @@ def decrypt(ciphertext):
         plaintext += disks[key['disks'][2]][(keywordPosOnDisks[2] - movement1) % 26]
     return plaintext
 
+dictionary = set(open('dict.txt','r').read().lower().split())
+max_len = max(map(len, dictionary))
+
+def findEnglishWords(text):
+    words_found = set()
+    for i in range(len(text)):
+        chunk = text[i:i+max_len+1]
+        for j in range(4,len(chunk)+1):
+            word = chunk[:j]
+            if word in dictionary:
+                words_found.add(word)
+
+    return words_found
+
+def genCombRange(selected = []):
+    diskComb = ['50', '51', '52', '53', '60', '61', '62', '63', '70', '71', '72', '73']
+    resultComb = ['50', '51', '52', '53', '60', '61', '62', '63', '70', '71', '72', '73']
+    if not selected:
+        return resultComb
+    for x in diskComb:
+        if x in selected:
+            resultComb.remove(x)
+            if int(x) % 2 == 0:
+                resultComb.remove(str(int(x) + 1))
+            else:
+                resultComb.remove(str(int(x) - 1))
+    return resultComb
+
+def verify(possiblePlaintext, ciphertext, key):
+    encrypted = encrypt(possiblePlaintext, key)
+    return encrypted == ciphertext
+
+
+
+def bruteForce(ciphertext, minimumEnglishWords):
+    ciphertext = ciphertext.replace(' ', '').lower()
+    key = {
+        'disks': ['51', '52', '53'],
+        'keyword': ['h', 's', 'e']
+    }
+    i = 0;
+    for a in range(0, 26):
+        for b in range(0, 26):
+            for c in range(0, 26):
+                key['keyword'][0] = disks['50'][a]
+                key['keyword'][1] = disks['50'][b]
+                key['keyword'][2] = disks['50'][c]
+
+                for x in genCombRange():
+                    for y in genCombRange([x]):
+                        for z in genCombRange([x, y]):
+                            key['disks'][0] = x
+                            key['disks'][1] = y
+                            key['disks'][2] = z
+                            possiblePlain = decrypt(ciphertext, key)
+                            i += 1
+                            stdout.write("\r%d" % i)
+                            stdout.flush()
+                            engwords = findEnglishWords(possiblePlain)
+                            if len(engwords) > minimumEnglishWords:
+                                stdout.write("\n")
+                                print('Plaintext: ', possiblePlain)
+                                print('Found english words: ', engwords)
+                                print('Key: ', key)
+                                if verify(possiblePlain, ciphertext, key):
+                                    print('Good enough!')
+                                    return
+
+
 # Test
-print(encrypt('some string for testing').upper())
-print(decrypt(encrypt('some string for testing')))
+key = {
+    'disks': ['52', '61', '62'],
+    'keyword': ['a', 'b', 'c']
+}
+print(beautify(encrypt('some string for testing', key)))
+print(decrypt(uglify('rnxl rqfh ifmn fqyr hhif'), key))
+bruteForce(uglify('rnxl rqfh ifmn fqyr hhif'), 6)
