@@ -45,11 +45,12 @@ key = {
     'keyword': ['r', 'l', 'k']
 }
 
+keywordPosOnDisks = [disks[key['disks'][0]].index(key['keyword'][0]),
+                    disks[key['disks'][1]].index(key['keyword'][1]),
+                    disks[key['disks'][2]].index(key['keyword'][2])]
+
 def encrypt(plaintext):
     ciphertext = ''
-    keywordPosOnDisks = [disks[key['disks'][0]].index(key['keyword'][0]),
-                        disks[key['disks'][1]].index(key['keyword'][1]),
-                        disks[key['disks'][2]].index(key['keyword'][2])]
     j = 0
     for i, char in enumerate(plaintext):
         if not char.isalpha():
@@ -57,7 +58,7 @@ def encrypt(plaintext):
         if j != 0 and j % 4 == 0:
             ciphertext += ' '
         posOnDisk2 = disks[key['disks'][2]].index(char)
-        movement = posOnDisk2 - keywordPosOnDisks[2] % 26
+        movement = (posOnDisk2 - keywordPosOnDisks[2]) % 26
         if j % 2 != 0:
             ciphertext += disks[key['disks'][1]][(keywordPosOnDisks[1] - movement) % 26]
         else:
@@ -65,5 +66,18 @@ def encrypt(plaintext):
         j += 1
     return ciphertext
 
+def decrypt(ciphertext):
+    ciphertext = ciphertext.replace(' ', '')
+    plaintext = ''
+    for i in range(0, len(ciphertext), 2):
+        posOnDisk0 = disks[key['disks'][0]].index(ciphertext[i])
+        posOnDisk1 = disks[key['disks'][1]].index(ciphertext[i + 1])
+        movement0 = (posOnDisk0 - keywordPosOnDisks[0]) % 26
+        movement1 = (posOnDisk1 - keywordPosOnDisks[1]) % 26
+        plaintext += disks[key['disks'][2]][(keywordPosOnDisks[2] + movement0) % 26]
+        plaintext += disks[key['disks'][2]][(keywordPosOnDisks[2] - movement1) % 26]
+    return plaintext
+
 # Test
 print(encrypt('some string for testing').upper())
+print(decrypt(encrypt('some string for testing')))
